@@ -1,0 +1,102 @@
+import sys
+import math
+import datetime
+import re
+from sortedcontainers import SortedList
+import time
+
+
+is_zip = re.compile(r'\d{5}.*')
+
+input_file_path = '/home/basti/Desktop/itcont.txt'
+output_file_path = '/home/basti/Desktop/output.txt'
+repeat_donors = {}
+recipients = {}
+
+
+def find_repeat_donors(percentile):  # this is not allowed to be parallelized
+    start_time = time.time()
+    with open(input_file_path, 'r') as input_file:
+        output_file = open(output_file_path, 'w+')
+        for line in input_file:
+            entry = line.split('|')
+            if is_valid(entry):
+                donation = extract(entry)
+                add_repeat(donation)
+                recipient = add_recipients(donation)
+                if recipient is not None:
+                    output_file.write(format_entry(percentile, recipient))
+                    output_file.write("\n")
+        output_file.close()
+    elapsed_time = time.time()-start_time
+    print(elapsed_time)
+
+
+def print_repeat(percentile):  # this could be parallelized?
+    for recipient in recipients:
+        print(format_entry(percentile, recipient))
+
+
+def format_entry(percentile, recipient):
+    percentile_value, length = compute_percentile_length(percentile, recipient)
+    entry = recipients[recipient]
+    amount = sum(entry)
+    line = recipient[0] + '|' + recipient[1] + '|' + str(recipient[2]) + '|'
+    line += str(percentile_value) + '|' + str(amount) + '|'
+    line += str(length)
+    return line
+
+
+def compute_percentile_length(percentile, recipient):
+    length = len(recipients[recipient])
+    if percentile == 0:
+        return recipients[recipient][0], length
+    index = math.ceil(percentile / 100 * length) - 1
+    return recipients[recipient][index], length
+
+
+def extract(line):
+    entry = []
+    entry.append(line[0])             # CMTE_ID
+    entry.append(line[7])             # Name
+    entry.append(line[10][:5])        # Zip-code
+    entry.append(int(line[13][-4:]))  # Year
+    entry.append(int(line[14]))       # Amount
+    return entry
+
+
+def is_valid(line):
+    if line[15] != '':  # Check if Other_ID is empty
+        return False
+    try:
+        datetime.datetime.strptime(line[13], '%m%d%Y')  # Check if date is malformed
+    except ValueError:
+        return False
+    if is_zip.match(line[10]) is None:  # Check if zip code is malformed
+        return False
+    if line[7] == '' or len(line[7].split(",")) < 2:  # check if name is malformed
+        return False
+    if line[0] == '' or line[14] == '':  # check if CMTE_ID, Transaction_AMT are non-empty
+        return False
+    return True
+
+
+def add_repeat(entry):
+    donor_key = entry[1] + entry[2]  # name+zip
+    if donor_key in repeat_donors:
+        if repeat_donors[donor_key] > entry[3]:
+            repeat_donors[donor_key] = entry[3]
+    else:
+        repeat_donors[donor_key] = entry[3]
+
+
+def add_recipients(entry):
+    donor_key = entry[1] + entry[2]
+    recip_key = None
+    if donor_key in repeat_donors and repeat_donors[donor_key] < entry[3]:
+        recip_key = (entry[0], entry[2], entry[3])
+        if recip_key in recipients:
+            recipients[recip_key].add(entry[4])
+        else:
+            recipients[recip_key] = SortedList([entry[4]])
+    return recip_key
