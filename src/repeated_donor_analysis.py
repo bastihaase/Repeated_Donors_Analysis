@@ -34,8 +34,8 @@ def main():
     
     The function reads three inputs from the command line:
     input file, output file and a file containing a single
-    integer, the percentile value. It reads these and
-    passes them on to the function process_file.
+    integer, the percentile value. It checks that there are
+    enough arguments and passes them on to the reader.
     
     Args:
     
@@ -43,10 +43,7 @@ def main():
     
     """
     if len(sys.argv) > 2:
-        percentile_file = open(sys.argv[2], 'r')
-        percentile = percentile_file.read()
-        process_file(percentile, sys.argv[0], sys.argv[1])
-
+        process_file(sys.argv[2], sys.argv[0], sys.argv[1])
 
 
 def process_file(percentile, input_file_path, output_file_path):
@@ -67,31 +64,38 @@ def process_file(percentile, input_file_path, output_file_path):
     Return:
     
     """
-    output_content = ''
-    with open(input_file_path, 'r') as input_file:
-        for line in input_file:
-            entry = line.split('|')
-            print(entry)
-            if is_valid(entry):
-                # extract relevant details of donation
-                donation = extract(entry)
-                # update donors information in repeat_donor
-                add_donor(donation)
-                # check if donation is from repeated donor, return recipient
-                recipient_key = add_recipients(donation)
-                if recipient_key is not None:
-                    output_content += format_entry(percentile, recipient_key)
-                    output_content += "\n"
-        output_file = open(output_file_path, 'w+')
-        output_file.write(output_content)
-        output_file.close()
+    try:
+        # Read percentile value
+        percentile_file = open(sys.argv[2], 'r')
+        percentile = percentile_file.read()
+        # Store output in variable, slightly faster then dumping lines individually
+        output_content = ''
+        with open(input_file_path, 'r') as input_file:
+            for line in input_file:
+                entry = line.split('|')
+                if is_valid(entry):
+                    # extract relevant details of donation
+                    donation = extract(entry)
+                    # update donors information in repeat_donor
+                    add_donor(donation)
+                    # check if donation is from repeated donor, return recipient
+                    recipient_key = add_recipients(donation)
+                    if recipient_key is not None:
+                        output_content += format_entry(percentile, recipient_key)
+                        output_content += "\n"
+            # Save output to file
+            output_file = open(output_file_path, 'w+')
+            output_file.write(output_content)
+            output_file.close()
+    except IOError:
+        print("There was an error reading/writing the files.")
 
 
 def format_entry(percentile, recipient_key):
     """ Given a percentile and (recipient,zip-code,year) key, returns the output string 
 
     The output string has the format:
-    '|recipient|zip-code|year|percentile_value|total_amount|number of contributions'
+    'recipient|zip-code|year|percentile_value|total_amount|number of contributions'
     
     
     Args:
@@ -120,7 +124,8 @@ def percentile_count(percentile, recipient_key):
     It uses the recipient_key to access all donations to the recipient in the
     given year and zip-code. These donations are in the form of a sorted list,
     the percentile can be easily computed via the nearest rank method.
-    The number of contributions is also computed and returned.
+    The number of contributions is also computed and returned. Returns
+    0, -1 if key is not valid and 0, -2 if percentile is not valid.
     
     Args:
         percentile (int): percentile value that is computed
@@ -132,18 +137,24 @@ def percentile_count(percentile, recipient_key):
         count (init): number of contributions
     
     """
-    count = len(recipients[recipient_key])
-    if percentile == 0:
-        return recipients[recipient_key][0], count
-    index = math.ceil(percentile / 100 * count) - 1
-    return recipients[recipient_key][index], count
+    try:
+        count = len(recipients[recipient_key])
+        if percentile == 0:
+            return recipients[recipient_key][0], count
+        if percentile > 100 or percentile < 0:
+            return 0, -2
+        index = math.ceil(percentile / 100 * count) - 1
+        return recipients[recipient_key][index], count
+    except KeyError:
+        return 0, -1
 
 
 def extract(line):
     """ Given a line containing a valid donation, extracts the information we need.
 
     It extracts CMTE_ID, Name of donor, Zip-code, Year,
-    and amount of donation in a list in this order
+    and amount of donation in a list in this order. As we only apply this function after
+    checking entry for validity, no exceptions are handled.
     
     Args:
         line (list): list containing the details of a valid donation
@@ -179,16 +190,19 @@ def is_valid(entry):
         boolean: True if entry is valid, False otherwise
 
     """
+    # Check it has the right number of entries
+    if len(entry) != 21:
+        return False
     # Check if Other_ID is empty
     if entry[15] != '':
         return False
-    # Check if donation date is malformed
-    is_zip = re.compile(r'\d{5}.*')
+    # Check if date is malformed
     try:
         datetime.datetime.strptime(entry[13], '%m%d%Y')
     except ValueError:
         return False
     # Check if zip code is malformed
+    is_zip = re.compile(r'\d{5}.*')
     if is_zip.match(entry[10]) is None:
         return False
     # check if name is malformed
