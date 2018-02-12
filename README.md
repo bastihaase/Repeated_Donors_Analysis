@@ -54,7 +54,8 @@ were roughly 50s for these files. I did not include them in testsuite as it woul
 break githubs data limit.
 
 In terms of theoretical performance and scalability, one might first think that a 
-binary search tree with indexing would be the better choice. It allows access
+binary search tree (or other types of trees such as AVL tree)
+ with indexing would be the better choice. It allows access
 in O(log(n)) which is slower than our implementation but it allows faster addition of elements.
 All in all, it would give a performance of O(nlog(n)) where n is the number of donations
 to a recipient from a zip code in a certain year. Our implementation is running in
@@ -64,6 +65,8 @@ results in [sortedcontainers](http://www.grantjenks.com/docs/sortedcontainers/),
 that even if the lists contain 1 million elements, the tree is slower in practice.
 This is also due to the sortedlist implementation being more efficient in taking advantage
 of hardware features such as caching which is not reflected in the big (or small) O notation.
+As these lists only contain donations for a fixed recipient from a fixed zip code in a fixed year,
+I am therefore confident that sortedlist is the better choice.
 
 ## Documentation
 
