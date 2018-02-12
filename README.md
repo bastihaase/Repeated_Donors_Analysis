@@ -70,7 +70,7 @@ of hardware features such as caching which is not reflected in the big (or small
 An html file containing a documentation created from the docstrings can be found
 in src (not the best place, but I did not want to mess with the folder structure
 as I am not sure if this would affect your testing procedure).
-Here is a [direct link](/src/repeated_donor_analys.html).
+Here is a [direct link](https://github.com/bastihaase/Repeated_Donors_Analysis/blob/master/src/repeated_donor_analysis.m.html).
 
 
 ## Dependencies
@@ -86,7 +86,14 @@ We import three packages
 
 It was developed and tested under Python 3.4, it was also tested under Python 3.6 and should run under Python 3.x.
 If the files itcont.txt, percentile.txt are stored in the input folder, then a simple execution of
-run.sh suffices to run the script and save the results in repeated_donors.txt in the output folder.
+```
+run.sh
+``` 
+suffices to run the script and save the results in repeated_donors.txt in the output folder.
 
-Tests can be run by running run_tests.sh in the insight_testsuite folder.
+Tests can be run by running 
+```
+run_tests.sh 
+```
+in the insight_testsuite folder.
 
