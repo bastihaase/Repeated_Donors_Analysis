@@ -156,8 +156,9 @@ def percentile_count(percentile, recipient_key):
             return recipients[recipient_key][0], count
         if percentile > 100 or percentile < 0:
             return 0, -2
+        # use nearest rank method to compute percentile
         index = math.ceil(percentile / 100 * count) - 1
-        return recipients[recipient_key][index], count
+        return round(recipients[recipient_key][index]), count
     except KeyError:
         return 0, -1
 
